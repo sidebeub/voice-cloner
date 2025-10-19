@@ -149,11 +149,16 @@ async def generate_audio(
     with open(audio_path, "wb") as f:
         f.write(b"")
 
-    # Save to database
+    # Generate URL path for the audio file (relative to /audio mount)
+    # The file is at ./uploads/generated/file.wav and we mount ./uploads at /audio
+    audio_url_path = f"/audio/generated/{audio_filename}"
+    full_audio_url = f"{settings.BASE_URL}{audio_url_path}"
+
+    # Save to database (store the full URL)
     generated = GeneratedAudio(
         voice_profile_id=request.voice_profile_id,
         text_input=request.text,
-        audio_path=audio_path,
+        audio_path=full_audio_url,
         settings=str(request.settings) if request.settings else None
     )
     db.add(generated)

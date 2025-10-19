@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "./uploads"
     MAX_UPLOAD_SIZE: int = 50000000  # 50MB
 
+    # Base URL for generating full URLs to audio files
+    BASE_URL: str = "http://localhost:8000"
+
     @property
     def cors_origins(self) -> List[str]:
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
