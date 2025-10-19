@@ -29,6 +29,7 @@ class VoiceProfileResponse(VoiceProfileBase):
 
     class Config:
         from_attributes = True
+        protected_namespaces = ()
 
 
 class GenerateAudioRequest(BaseModel):
