@@ -14,6 +14,7 @@ from ..schemas import (
     GenerateAudioRequest,
     GeneratedAudioResponse,
 )
+from ..services import get_voice_service
 
 router = APIRouter(prefix="/voices", tags=["voices"])
 
@@ -128,29 +129,57 @@ async def generate_audio(
     request: GenerateAudioRequest,
     db: Session = Depends(get_db)
 ):
-    """Generate audio from text (placeholder - implement with actual voice cloning service)"""
+    """Generate audio from text using voice cloning"""
     # Validate voice profile if provided
+    speaker_wav_path = None
     if request.voice_profile_id:
         voice = db.query(VoiceProfile).filter(VoiceProfile.id == request.voice_profile_id).first()
         if not voice:
             raise HTTPException(status_code=404, detail="Voice profile not found")
+        speaker_wav_path = voice.sample_audio_path
 
     # Create output directory
     output_dir = os.path.join(settings.UPLOAD_DIR, "generated")
     os.makedirs(output_dir, exist_ok=True)
 
-    # Placeholder for actual voice generation
+    # Generate audio file
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     audio_filename = f"generated_{timestamp}.wav"
     audio_path = os.path.join(output_dir, audio_filename)
 
-    # TODO: Implement actual voice cloning here
-    # For now, just create a placeholder file
-    with open(audio_path, "wb") as f:
-        f.write(b"")
+    duration = None
+
+    if settings.ENABLE_VOICE_CLONING:
+        try:
+            # Get voice cloning service
+            voice_service = get_voice_service()
+
+            # Generate speech with voice cloning
+            voice_service.generate_speech(
+                text=request.text,
+                output_path=audio_path,
+                speaker_wav=speaker_wav_path,
+                language=request.settings.get("language", "en") if request.settings else "en"
+            )
+
+            # Get audio duration
+            import wave
+            try:
+                with wave.open(audio_path, 'rb') as wav_file:
+                    frames = wav_file.getnframes()
+                    rate = wav_file.getframerate()
+                    duration = int(frames / float(rate))
+            except:
+                duration = None
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error generating audio: {str(e)}")
+    else:
+        # Voice cloning disabled - create placeholder file
+        with open(audio_path, "wb") as f:
+            f.write(b"")
 
     # Generate URL path for the audio file (relative to /audio mount)
-    # The file is at ./uploads/generated/file.wav and we mount ./uploads at /audio
     audio_url_path = f"/audio/generated/{audio_filename}"
     full_audio_url = f"{settings.BASE_URL}{audio_url_path}"
 
@@ -159,6 +188,7 @@ async def generate_audio(
         voice_profile_id=request.voice_profile_id,
         text_input=request.text,
         audio_path=full_audio_url,
+        duration_seconds=duration,
         settings=str(request.settings) if request.settings else None
     )
     db.add(generated)

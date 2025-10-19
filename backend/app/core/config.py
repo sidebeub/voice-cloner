@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # Base URL for generating full URLs to audio files
     BASE_URL: str = "http://localhost:8000"
 
+    # Voice cloning settings
+    ENABLE_VOICE_CLONING: bool = True  # Set to False in production if not using GPU server
+
     @property
     def cors_origins(self) -> List[str]:
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
